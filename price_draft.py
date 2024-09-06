@@ -1,30 +1,28 @@
 import requests
 import pandas as pd
 
-def get_crypto_minutely_prices(crypto_id, vs_currency, days):
-    url = f"https://api.coingecko.com/api/v3/coins/{crypto_id}/market_chart"
+def get_binance_klines(symbol, interval, start_time, end_time):
+    url = f"https://api.binance.com/api/v3/klines"
     params = {
-        'vs_currency': vs_currency,
-        'days': days,  # 设置为1，表示过去24小时
-        'interval': 'minutely'  # 每分钟的数据
+        'symbol': symbol,
+        'interval': interval,
+        'startTime': start_time,
+        'endTime': end_time,
+        'limit': 1000  # 每次请求最多1000条记录
     }
     response = requests.get(url, params=params)
-
-    try:
-        data = response.json()  # 尝试将响应转换为JSON
-    except ValueError:
-        print("无法将响应转换为JSON，响应内容:", response.text)
-        return None
-
-    # 打印API返回的数据
-    print("API 响应数据:", data)    
-    # 提取价格数据
-    prices = data['prices']
-    df = pd.DataFrame(prices, columns=['timestamp', 'price'])
-    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')  # 转换时间戳为日期时间格式
+    data = response.json()
+    
+    # 将数据转换为DataFrame
+    df = pd.DataFrame(data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume', 'close_time', 'quote_asset_volume', 'number_of_trades', 'taker_buy_base_asset_volume', 'taker_buy_quote_asset_volume', 'ignore'])
+    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     return df
 
-# 获取比特币过去24小时的每分钟价格
-df = get_crypto_minutely_prices('bitcoin', 'usd', 1)
+# 获取比特币的每分钟K线数据，symbol为BTCUSDT
+start_time = int(pd.Timestamp('2020-01-01').timestamp() * 1000)  # 开始时间，单位为毫秒
+end_time = int(pd.Timestamp('2024-01-02').timestamp() * 1000)  # 结束时间，单位为毫秒
+df = get_binance_klines('BTCUSDT', '1m', start_time, end_time)
+
 print(df.head())
-df.shape
+print(df.tail())
+print(df.shape)
