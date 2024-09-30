@@ -9,27 +9,27 @@ def get_binance_klines(symbol, interval, start_time, end_time):
         'interval': interval,
         'startTime': start_time,
         'endTime': end_time,
-        'limit': 1000  # 每次请求最多1000条记录
+        'limit': 720  # 每次请求720条记录
     }
     all_data = []
-    
+
     while True:
         response = requests.get(url, params=params)
         data = response.json()
-        
+
         if not data:
             break
-        
+
         all_data.extend(data)
         params['startTime'] = data[-1][0] + 1  # 更新开始时间为上次数据的最后一个时间戳
-        
-        # 如果获取的数据量小于限制，说明没有更多数据了
-        if len(data) < 1000:
+
+        # 检查请求次数是否足够以获取完整的一个月数据（60次，最多请求31天 * 24小时 * 60分钟 = 44640 条数据）
+        if len(all_data) >= 44640 or params['startTime'] >= end_time:
             break
-    
+
     # 将数据转换为DataFrame
-    df = pd.DataFrame(all_data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume', 
-                                         'close_time', 'quote_asset_volume', 'number_of_trades', 
+    df = pd.DataFrame(all_data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume',
+                                         'close_time', 'quote_asset_volume', 'number_of_trades',
                                          'taker_buy_base_asset_volume', 'taker_buy_quote_asset_volume', 'ignore'])
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')  # 转换为日期时间格式
     return df
@@ -44,7 +44,7 @@ def store_to_sql(df, db_name, table_name):
 
 # 获取上个月的时间范围
 end_time = pd.Timestamp.now().replace(hour=0, minute=0, second=0, microsecond=0)
-start_time = end_time - pd.DateOffset(days=1)
+start_time = end_time - pd.DateOffset(months=1)
 
 # 将时间转换为Unix时间戳（毫秒）
 start_time_ms = int(start_time.timestamp() * 1000)
